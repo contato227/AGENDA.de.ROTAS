@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agenda de Campo — AB Esquadrias</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f0f2f5;--surface:#fff;--surface2:#f7f9fb;--border:#e2e6ea;
+  --text:#1a2332;--text2:#4a5568;--text3:#8a96a3;
+  --green:#22863a;--green-bg:#e6f4ea;
+  --red:#c0392b;--red-bg:#fdecea;--red-border:#f5b7b1;
+  --blue:#1a6fb0;--blue-bg:#e8f1fb;
+  --amber:#b7600a;--amber-bg:#fef3e2;--amber-border:#f5d08a;
+  --gray:#5a6270;--gray-bg:#f0f2f5;
+  --purple:#5b3fa0;--purple-bg:#f0ecfb;
+  --teal:#0a7e6e;--teal-bg:#e0f5f2;
+  --radius:10px;--radius-sm:6px;--shadow:0 1px 4px rgba(0,0,0,0.08);
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+.app{display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:#1a2332;color:#fff;padding:0 20px;display:flex;align-items:center;gap:16px;height:52px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,0.18)}
+.topbar-logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px}
+.topbar-logo-icon{width:30px;height:30px;background:#2563eb;border-radius:7px;display:flex;align-items:center;justify-content:center}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.topbar-date{font-size:12px;color:#8fa3bf}
+.sync-indicator{display:flex;align-items:center;gap:4px;font-size:11px;color:#8fa3bf}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#22c55e}
+.sync-dot.syncing{animation:pulse 1s infinite;background:#f59e0b}
+.sync-dot.error{background:#ef4444}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;display:flex;gap:2px;overflow-x:auto}
+.nav-btn{padding:12px 14px;border:none;background:none;color:var(--text2);font-size:13px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;display:flex;align-items:center;gap:5px}
+.nav-btn.active{color:#1a6fb0;border-bottom-color:#1a6fb0;font-weight:600}
+.nav-btn:hover{color:var(--text)}
+.main{flex:1;padding:20px;max-width:1000px;margin:0 auto;width:100%}
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px}
+.summary-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
+.summary-num{font-size:26px;font-weight:700;line-height:1}
+.summary-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);margin-top:3px}
+.summary-card.green .summary-num{color:var(--green)}
+.summary-card.red .summary-num{color:var(--red)}
+.summary-card.blue .summary-num{color:var(--blue)}
+.summary-card.amber .summary-num{color:var(--amber)}
+.summary-card.gray .summary-num{color:var(--gray)}
+.summary-card.purple .summary-num{color:var(--purple)}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+.filter-select{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);padding:7px 10px;font-size:13px;cursor:pointer;outline:none}
+.filter-select:focus{border-color:var(--blue)}
+.btn{border:none;border-radius:var(--radius-sm);padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .15s}
+.btn-primary{background:#1a6fb0;color:#fff}
+.btn-primary:hover{background:#1558a0}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-ghost{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--border)}
+.btn-danger{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+.btn-warning{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+.servicos-list{display:flex;flex-direction:column;gap:8px}
+.servico-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;display:flex;gap:12px;align-items:flex-start}
+.servico-card.concluido{opacity:.75;border-left:3px solid var(--green)}
+.servico-card.problema{border-left:3px solid var(--red)}
+.servico-card.pendente{border-left:3px solid var(--amber)}
+.servico-card.arquivado{opacity:.45;border-left:3px solid var(--gray)}
+.avatar{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;flex-shrink:0}
+.servico-body{flex:1;min-width:0}
+.servico-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.servico-nome{font-weight:700;font-size:14px}
+.servico-id{font-size:11px;color:var(--text3)}
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px}
+.badge.verde{background:var(--green-bg);color:var(--green)}
+.badge.vermelho{background:var(--red-bg);color:var(--red)}
+.badge.azul{background:var(--blue-bg);color:var(--blue)}
+.badge.amarelo{background:var(--amber-bg);color:var(--amber)}
+.badge.cinza{background:var(--gray-bg);color:var(--gray)}
+.badge.roxo{background:var(--purple-bg);color:var(--purple)}
+.badge.teal{background:var(--teal-bg);color:var(--teal)}
+.servico-info{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text2);margin-bottom:3px}
+.servico-desc{font-size:12px;color:var(--text3);margin-top:2px}
+.servico-obs{font-size:12px;color:var(--amber);margin-top:2px}
+.servico-actions{display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0}
+.history-list{margin-top:6px;padding:6px 10px;background:var(--surface2);border-radius:var(--radius-sm);display:none}
+.history-list.open{display:block}
+.history-item{font-size:11px;color:var(--text3);padding:3px 0;display:flex;gap:6px;align-items:center;border-bottom:1px solid var(--border)}
+.history-item:last-child{border-bottom:none}
+.history-date{font-weight:600;color:var(--text2);min-width:52px}
+.empty{text-align:center;padding:48px 20px;color:var(--text3)}
+.empty i{font-size:40px;margin-bottom:10px;display:block}
+.empty-title{font-size:15px;font-weight:600;color:var(--text2);margin-bottom:6px}
+.modal-backdrop{position:fixed;inset:0;background:rgba(10,15,25,0.55);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:var(--surface);border-radius:14px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.18)}
+.modal-header{padding:20px 22px 0;display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:17px;font-weight:700}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text3);padding:4px}
+.modal-body{padding:16px 22px 22px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-group{margin-bottom:13px}
+.form-label{display:block;font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+.form-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);padding:9px 11px;font-size:13px;outline:none}
+.form-input:focus{border-color:#1a6fb0}
+.form-input.error{border-color:var(--red)}
+.form-textarea{min-height:60px;resize:vertical;font-family:inherit}
+.modal-footer{display:flex;gap:8px;padding-top:6px}
+.modal-footer .btn{flex:1;justify-content:center;padding:10px}
+.cal-header{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.cal-title{font-size:16px;font-weight:700;flex:1}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:20px}
+.cal-day-name{text-align:center;font-size:11px;font-weight:700;color:var(--text3);padding:6px 0;text-transform:uppercase}
+.cal-day{min-height:54px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px;cursor:pointer;background:var(--surface);display:flex;flex-direction:column;gap:2px}
+.cal-day:hover{border-color:#1a6fb0;background:var(--blue-bg)}
+.cal-day.today{border-color:#1a6fb0;border-width:2px}
+.cal-day.selected{background:var(--blue-bg);border-color:#1a6fb0}
+.cal-day.other-month{opacity:.35}
+.cal-day-num{font-size:12px;font-weight:600}
+.cal-day.today .cal-day-num{color:#1a6fb0}
+.cal-dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin:1px}
+.cal-detail{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-top:4px}
+.cal-detail-date{font-size:15px;font-weight:700;margin-bottom:12px;color:var(--blue)}
+.hist-func-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px}
+.hist-func-header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.hist-func-name{font-weight:700;font-size:14px}
+.hist-func-type{font-size:11px;color:var(--text3)}
+.hist-func-item{font-size:12px;color:var(--text2);padding:5px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hist-func-item:last-child{border-bottom:none}
+.hist-table{width:100%;border-collapse:collapse;font-size:13px}
+.hist-table th{background:var(--surface2);padding:8px 10px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text3);border-bottom:2px solid var(--border)}
+.hist-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.hist-table tr:hover td{background:var(--surface2)}
+.admin-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px}
+.admin-title{font-size:14px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.admin-list{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.admin-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface2);border-radius:var(--radius-sm);font-size:13px}
+.admin-item-name{flex:1}
+.admin-item-badge{font-size:10px;padding:2px 7px;border-radius:10px;background:var(--green-bg);color:var(--green);font-weight:600}
+.admin-item-badge.inactive{background:var(--red-bg);color:var(--red)}
+.admin-add-row{display:flex;gap:8px}
+.admin-add-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);padding:8px 10px;font-size:13px;outline:none}
+.admin-add-input:focus{border-color:#1a6fb0}
+.toast{position:fixed;bottom:20px;right:20px;padding:11px 18px;border-radius:10px;font-weight:600;font-size:13px;z-index:300;box-shadow:0 4px 16px rgba(0,0,0,0.15);animation:toastIn .25s ease}
+@keyframes toastIn{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
+.toast.ok{background:#22863a;color:#fff}
+.toast.err{background:#c0392b;color:#fff}
+.toast.warn{background:#b7600a;color:#fff}
+.confirm-box{background:var(--surface);border-radius:14px;padding:26px 24px;max-width:340px;width:100%;text-align:center}
+.confirm-btns{display:flex;gap:8px;margin-top:18px}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.section-title{font-size:15px;font-weight:700}
+.tab-toggle{display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:12px}
+.tab-toggle-btn{flex:1;padding:7px 10px;border:none;background:transparent;font-size:12px;font-weight:600;cursor:pointer;color:var(--text2)}
+.tab-toggle-btn.active{background:#1a6fb0;color:#fff}
+.loading-overlay{position:fixed;inset:0;background:rgba(240,242,245,0.85);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.loading-spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:#1a6fb0;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:14px;color:var(--text2);font-weight:600}
+</style>
+</head>
+<body>
+<div id="loading-overlay" class="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Conectando ao banco de dados...</div>
+</div>
+
+<div class="app">
+  <div class="topbar">
+    <div class="topbar-logo">
+      <div class="topbar-logo-icon"><i class="ti ti-building-warehouse" style="color:#fff;font-size:16px"></i></div>
+      Agenda de Campo
+    </div>
+    <div class="topbar-right">
+      <div class="sync-indicator">
+        <div class="sync-dot" id="sync-dot"></div>
+        <span id="sync-label">Conectado</span>
+      </div>
+      <div class="topbar-date" id="topbar-date"></div>
+    </div>
+  </div>
+
+  <div class="nav">
+    <button class="nav-btn active" onclick="showView('painel')" id="nav-painel"><i class="ti ti-layout-dashboard"></i> Painel</button>
+    <button class="nav-btn" onclick="showView('servicos')" id="nav-servicos"><i class="ti ti-list-check"></i> Serviços</button>
+    <button class="nav-btn" onclick="showView('calendario')" id="nav-calendario"><i class="ti ti-calendar"></i> Calendário</button>
+    <button class="nav-btn" onclick="showView('historico')" id="nav-historico"><i class="ti ti-history"></i> Histórico</button>
+    <button class="nav-btn" onclick="showView('func-hist')" id="nav-func-hist"><i class="ti ti-user-search"></i> Por Funcionário</button>
+    <button class="nav-btn" onclick="showView('admin')" id="nav-admin"><i class="ti ti-settings"></i> Admin</button>
+  </div>
+
+  <div class="main" id="main-content"></div>
+</div>
+
+<div class="modal-backdrop" id="modal-backdrop" style="display:none" onclick="handleBackdropClick(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Novo Serviço</div>
+      <button class="modal-close" onclick="closeModal()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="confirm-backdrop" style="display:none">
+  <div class="confirm-box">
+    <div style="font-size:38px;margin-bottom:10px" id="confirm-icon">🗑️</div>
+    <div style="font-size:15px;font-weight:700;margin-bottom:6px" id="confirm-title">Confirmar ação?</div>
+    <div style="font-size:13px;color:var(--text3)" id="confirm-desc">Esta ação não pode ser desfeita.</div>
+    <div class="confirm-btns">
+      <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="closeConfirm()">Cancelar</button>
+      <button class="btn btn-danger" style="flex:1;justify-content:center" id="confirm-ok-btn">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+// ── SUPABASE CONFIG ──────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://lwczbobafyniaikkfpzc.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3Y3pib2JhZnluaWFpa2tmcHpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzNjk0OTYsImV4cCI6MjA5NTk0NTQ5Nn0.e5kTfPL_rH395AKHFHAf_out3EyTZ3xKbTezzHdytpM';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+let state = {
+  servicos: [],
+  historico: [],
+  config: {
+    funcionarios: ['Samuel','Yuri','Fernando','Marcos','Jean','Manuel','Sula','Alice','Jabes','Ulde'],
+    cidades: ['Blumenau','Gaspar','Indaial','Timbó','Pomerode','Brusque','Joinville','Itajaí','Balneário Camboriú','Florianópolis'],
+    tipos: ['Instalação','Manutenção','Conserto','Solda','Montagem','Entrega','Visita técnica','Vidraçaria','Ferro','Alumínio','Box','Porta','Janela','Portão','Cerca','Cobertura'],
+    setores: ['Alumínio','Ferro','Escritório','Vidraçaria','Produção','Campo','Elétrica','Outros'],
+    funcionariosInternos: ['Sula','Alice','Jabes','Ulde'],
+  }
+};
+
+let currentView = 'painel';
+let editingId = null;
+let calDate = new Date();
+let calSelected = null;
+let filterFunc = 'todos';
+let filterStatus = 'todos';
+let filterCidade = 'todos';
+let filterData = '';
+let filterArquivado = 'ativos';
+let histDate = todayStr();
+let histFuncSel = '';
+let histFuncDtIni = '';
+let histFuncDtFim = '';
+let tipoRegistroAtual = 'externo';
+let confirmCallback = null;
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+function todayStr(){return new Date().toISOString().slice(0,10)}
+function fmtDate(d){if(!d)return'-';const[y,m,dd]=d.split('-');return`${dd}/${m}/${y}`}
+function fmtTS(ts){if(!ts)return'-';return new Date(ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
+function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+
+const AVATAR_COLORS={Samuel:'#7c3aed',Yuri:'#0891b2',Fernando:'#059669',Marcos:'#d97706',Jean:'#dc2626',Manuel:'#db2777',Sula:'#0369a1',Alice:'#0f766e',Jabes:'#1e40af',Ulde:'#92400e'};
+function avatarColor(n){return AVATAR_COLORS[n]||'#5a6270'}
+function initials(n){return n?n.slice(0,2).toUpperCase():'??'}
+
+const STATUS={
+  aguardando:{label:'Aguardando',badge:'cinza'},
+  em_campo:{label:'Em campo',badge:'azul'},
+  em_andamento:{label:'Em andamento',badge:'teal'},
+  concluido:{label:'Concluído',badge:'verde'},
+  pendente:{label:'Pendente',badge:'amarelo'},
+  retorno:{label:'Retorno necessário',badge:'roxo'},
+  ag_material:{label:'Aguard. material',badge:'amarelo'},
+  problema:{label:'Problema',badge:'vermelho'},
+  arquivado:{label:'Arquivado',badge:'cinza'},
+};
+const STATUS_FLOW={aguardando:'em_campo',em_campo:'em_andamento',em_andamento:'concluido'};
+
+// ── SYNC STATUS ──────────────────────────────────────────────────────────────
+function setSyncStatus(status){
+  const dot=document.getElementById('sync-dot');
+  const label=document.getElementById('sync-label');
+  if(!dot)return;
+  dot.className='sync-dot';
+  if(status==='syncing'){dot.classList.add('syncing');label.textContent='Sincronizando...'}
+  else if(status==='error'){dot.classList.add('error');label.textContent='Erro de conexão'}
+  else{label.textContent='Conectado'}
+}
+
+// ── SUPABASE CRUD ─────────────────────────────────────────────────────────────
+async function loadServicos(){
+  setSyncStatus('syncing');
+  try{
+    const {data,error}=await sb.from('servicos').select('*').order('created_at',{ascending:false});
+    if(error)throw error;
+    state.servicos=data||[];
+    setSyncStatus('ok');
+  }catch(e){setSyncStatus('error');showToast('Erro ao carregar serviços','err')}
+}
+
+async function loadHistorico(){
+  try{
+    const {data,error}=await sb.from('historico').select('*').order('created_at',{ascending:true});
+    if(error)throw error;
+    state.historico=data||[];
+  }catch(e){}
+}
+
+async function loadConfig(){
+  try{
+    const {data,error}=await sb.from('admin_config').select('*');
+    if(error)throw error;
+    if(data&&data.length>0){
+      data.forEach(row=>{if(row.chave&&row.valor)state.config[row.chave]=row.valor});
+    }else{
+      await saveConfig();
+    }
+  }catch(e){}
+}
+
+async function saveConfig(){
+  try{
+    const entries=Object.entries(state.config);
+    for(const[chave,valor]of entries){
+      await sb.from('admin_config').upsert({chave,valor,updated_at:new Date().toISOString()},{onConflict:'chave'});
+    }
+  }catch(e){showToast('Erro ao salvar configuração','err')}
+}
+
+async function salvarServico(dados,isNew=true){
+  setSyncStatus('syncing');
+  try{
+    if(isNew){
+      const {data,error}=await sb.from('servicos').insert([dados]).select();
+      if(error)throw error;
+      if(data&&data[0])state.servicos.unshift(data[0]);
+    }else{
+      const {data,error}=await sb.from('servicos').update(dados).eq('servico_id',dados.servico_id).select();
+      if(error)throw error;
+      if(data&&data[0]){
+        const idx=state.servicos.findIndex(s=>s.servico_id===dados.servico_id);
+        if(idx>=0)state.servicos[idx]=data[0];
+      }
+    }
+    setSyncStatus('ok');
+    return true;
+  }catch(e){setSyncStatus('error');showToast('Erro ao salvar: '+e.message,'err');return false}
+}
+
+async function registrarHistorico(servicoId,statusAnterior,statusNovo,obs=''){
+  try{
+    await sb.from('historico').insert([{
+      servico_id:servicoId,
+      data_registro:todayStr(),
+      status_anterior:statusAnterior,
+      status_novo:statusNovo,
+      obs,
+      created_at:new Date().toISOString()
+    }]);
+    await loadHistorico();
+  }catch(e){}
+}
+
+async function arquivarServico(servicoId){
+  setSyncStatus('syncing');
+  try{
+    await sb.from('servicos').update({status:'arquivado',arquivado:true,updated_at:new Date().toISOString()}).eq('servico_id',servicoId);
+    const idx=state.servicos.findIndex(s=>s.servico_id===servicoId);
+    if(idx>=0){state.servicos[idx].status='arquivado';state.servicos[idx].arquivado=true}
+    setSyncStatus('ok');
+    showToast('Serviço arquivado','ok');
+    render();
+  }catch(e){setSyncStatus('error');showToast('Erro ao arquivar','err')}
+}
+
+// ── REALTIME ──────────────────────────────────────────────────────────────────
+function setupRealtime(){
+  sb.channel('servicos-changes')
+    .on('postgres_changes',{event:'*',schema:'public',table:'servicos'},payload=>{
+      if(payload.eventType==='INSERT'){
+        const exists=state.servicos.find(s=>s.servico_id===payload.new.servico_id);
+        if(!exists)state.servicos.unshift(payload.new);
+      }else if(payload.eventType==='UPDATE'){
+        const idx=state.servicos.findIndex(s=>s.servico_id===payload.new.servico_id);
+        if(idx>=0)state.servicos[idx]=payload.new;
+        else state.servicos.unshift(payload.new);
+      }else if(payload.eventType==='DELETE'){
+        state.servicos=state.servicos.filter(s=>s.servico_id!==payload.old.servico_id);
+      }
+      render();
+    })
+    .subscribe();
+}
+
+// ── VIEWS ─────────────────────────────────────────────────────────────────────
+function showView(v){
+  currentView=v;
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  const nb=document.getElementById('nav-'+v);
+  if(nb)nb.classList.add('active');
+  render();
+}
+
+function render(){
+  const el=document.getElementById('main-content');
+  if(!el)return;
+  if(currentView==='painel')el.innerHTML=renderPainel();
+  else if(currentView==='servicos')el.innerHTML=renderServicos();
+  else if(currentView==='calendario')el.innerHTML=renderCalendario();
+  else if(currentView==='historico')el.innerHTML=renderHistorico();
+  else if(currentView==='func-hist')el.innerHTML=renderFuncHist();
+  else if(currentView==='admin')el.innerHTML=renderAdmin();
+}
+
+// ── PAINEL ────────────────────────────────────────────────────────────────────
+function renderPainel(){
+  const ativos=state.servicos.filter(s=>!s.arquivado&&s.status!=='arquivado');
+  const conc=ativos.filter(s=>s.status==='concluido').length;
+  const pend=ativos.filter(s=>['aguardando','pendente','ag_material'].includes(s.status)).length;
+  const campo=ativos.filter(s=>['em_campo','em_andamento'].includes(s.status)).length;
+  const prob=ativos.filter(s=>s.status==='problema').length;
+  const hoje=todayStr();
+  const sHoje=ativos.filter(s=>s.data_criacao===hoje);
+
+  const semana=[];
+  for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);semana.push(d.toISOString().slice(0,10))}
+  const semanaData=semana.map(d=>({
+    d,
+    c:state.servicos.filter(s=>s.data_criacao===d&&s.status==='concluido').length,
+    t:state.servicos.filter(s=>s.data_criacao===d).length
+  }));
+  const maxVal=Math.max(...semanaData.map(x=>x.t),1);
+
+  const rank={};
+  const trinta=new Date();trinta.setDate(trinta.getDate()-30);
+  state.servicos.filter(s=>new Date(s.data_criacao)>=trinta&&s.status==='concluido')
+    .forEach(s=>{rank[s.funcionario]=(rank[s.funcionario]||0)+1});
+  const rankArr=Object.entries(rank).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+  const criticos=ativos.filter(s=>['problema','retorno','pendente','ag_material'].includes(s.status));
+
+  return`
+  <div class="summary-grid">
+    <div class="summary-card blue"><div class="summary-num">${sHoje.length}</div><div class="summary-label">Hoje</div></div>
+    <div class="summary-card green"><div class="summary-num">${conc}</div><div class="summary-label">Concluídos</div></div>
+    <div class="summary-card amber"><div class="summary-num">${pend}</div><div class="summary-label">Pendentes</div></div>
+    <div class="summary-card gray"><div class="summary-num">${campo}</div><div class="summary-label">Em campo</div></div>
+    <div class="summary-card red"><div class="summary-num">${prob}</div><div class="summary-label">Problemas</div></div>
+    <div class="summary-card purple"><div class="summary-num">${ativos.length}</div><div class="summary-label">Total ativo</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+    <div class="admin-section">
+      <div class="admin-title"><i class="ti ti-chart-bar" style="color:var(--blue)"></i> Últimos 7 dias</div>
+      <div style="display:flex;align-items:flex-end;gap:5px;height:80px">
+        ${semanaData.map(x=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+          <div style="width:100%;border-radius:4px 4px 0 0;background:#bee3f8;height:${Math.round((x.t/maxVal)*60)}px;min-height:${x.t?4:0}px;position:relative">
+            <div style="position:absolute;bottom:0;left:0;right:0;background:#1a6fb0;border-radius:4px 4px 0 0;height:${Math.round((x.c/maxVal)*60)}px;min-height:${x.c?3:0}px"></div>
+          </div>
+          <div style="font-size:9px;color:var(--text3);font-weight:600">${x.d.slice(8)}</div>
+        </div>`).join('')}
+      </div>
+      <div style="display:flex;gap:12px;margin-top:8px">
+        <span style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:#bee3f8;border-radius:2px;display:inline-block"></span>Total</span>
+        <span style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:#1a6fb0;border-radius:2px;display:inline-block"></span>Concluídos</span>
+      </div>
+    </div>
+    <div class="admin-section">
+      <div class="admin-title"><i class="ti ti-trophy" style="color:var(--amber)"></i> Ranking 30 dias</div>
+      ${rankArr.length===0?'<div style="color:var(--text3);font-size:13px">Nenhum concluído ainda.</div>':
+        rankArr.map(([nome,qtd],i)=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:13px;font-weight:700;color:var(--text3);min-width:18px">${i+1}.</span>
+          <div class="avatar" style="background:${avatarColor(nome)};width:28px;height:28px;font-size:11px">${initials(nome)}</div>
+          <span style="flex:1;font-size:13px;font-weight:600">${nome}</span>
+          <span class="badge verde">${qtd}</span>
+        </div>`).join('')}
+    </div>
+  </div>
+  <div class="admin-section">
+    <div class="admin-title"><i class="ti ti-alert-circle" style="color:var(--red)"></i> Atenção necessária</div>
+    ${criticos.length===0?'<div style="color:var(--text3);font-size:13px">Nenhuma pendência crítica.</div>':
+      renderServicosList(criticos,true)}
+  </div>`;
+}
+
+// ── SERVIÇOS ──────────────────────────────────────────────────────────────────
+function renderServicos(){
+  let lista=state.servicos.filter(s=>filterArquivado==='ativos'?!s.arquivado&&s.status!=='arquivado':s.arquivado||s.status==='arquivado');
+  if(filterFunc!=='todos')lista=lista.filter(s=>s.funcionario===filterFunc);
+  if(filterStatus!=='todos')lista=lista.filter(s=>s.status===filterStatus);
+  if(filterCidade!=='todos')lista=lista.filter(s=>s.cidade===filterCidade);
+  if(filterData)lista=lista.filter(s=>s.data_criacao===filterData);
+  lista.sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at));
+
+  return`
+  <div class="section-header">
+    <div class="section-title">Serviços</div>
+    <button class="btn btn-primary" onclick="openModal()"><i class="ti ti-plus"></i> Novo serviço</button>
+  </div>
+  <div class="filters">
+    <div class="tab-toggle" style="margin-bottom:0">
+      <button class="tab-toggle-btn ${filterArquivado==='ativos'?'active':''}" onclick="filterArquivado='ativos';render()">Ativos</button>
+      <button class="tab-toggle-btn ${filterArquivado==='arquivados'?'active':''}" onclick="filterArquivado='arquivados';render()">Arquivados</button>
+    </div>
+    <select class="filter-select" onchange="filterFunc=this.value;render()">
+      <option value="todos">Todos os funcionários</option>
+      ${state.config.funcionarios.map(f=>`<option value="${f}" ${filterFunc===f?'selected':''}>${f}</option>`).join('')}
+    </select>
+    <select class="filter-select" onchange="filterStatus=this.value;render()">
+      <option value="todos">Todos os status</option>
+      ${Object.entries(STATUS).filter(([k])=>k!=='arquivado').map(([k,v])=>`<option value="${k}" ${filterStatus===k?'selected':''}>${v.label}</option>`).join('')}
+    </select>
+    <select class="filter-select" onchange="filterCidade=this.value;render()">
+      <option value="todos">Todas as cidades</option>
+      ${state.config.cidades.map(c=>`<option value="${c}" ${filterCidade===c?'selected':''}>${c}</option>`).join('')}
+    </select>
+    <input type="date" class="filter-select" value="${filterData}" onchange="filterData=this.value;render()">
+    <button class="btn btn-ghost btn-sm" onclick="filterFunc='todos';filterStatus='todos';filterCidade='todos';filterData='';render()"><i class="ti ti-x"></i> Limpar</button>
+  </div>
+  ${renderServicosList(lista,false)}`;
+}
+
+function renderServicosList(lista,compact=false){
+  if(lista.length===0)return`<div class="empty"><i class="ti ti-clipboard-check"></i><div class="empty-title">Nenhum serviço encontrado</div></div>`;
+  return`<div class="servicos-list">${lista.map(s=>renderServicoCard(s,compact)).join('')}</div>`;
+}
+
+function renderServicoCard(s,compact=false){
+  const st=STATUS[s.status]||STATUS.aguardando;
+  const prox=STATUS_FLOW[s.status];
+  const isInt=s.tipo_registro==='interno';
+  const hist=state.historico.filter(h=>h.servico_id===s.servico_id).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+
+  return`<div class="servico-card ${s.status}" id="sc-${s.servico_id}">
+    <div class="avatar" style="background:${avatarColor(s.funcionario)}">${initials(s.funcionario)}</div>
+    <div class="servico-body">
+      <div class="servico-top">
+        <span class="servico-nome">${s.funcionario}</span>
+        <span class="servico-id">#${(s.servico_id||'').slice(-5).toUpperCase()}</span>
+        <span class="badge ${st.badge}">${st.label}</span>
+        ${s.tipo?`<span class="badge cinza">${s.tipo}</span>`:''}
+        ${isInt?'<span class="badge teal"><i class="ti ti-building" style="font-size:10px"></i> Interno</span>':''}
+      </div>
+      ${isInt?
+        `<div class="servico-info"><span><i class="ti ti-tools" style="font-size:12px"></i> Setor: <b>${s.setor||'-'}</b></span><span><i class="ti ti-calendar" style="font-size:12px"></i> ${fmtDate(s.data_criacao)}</span></div>`:
+        `<div class="servico-info">
+          ${s.cliente?`<span><i class="ti ti-user" style="font-size:12px"></i> ${s.cliente}</span>`:''}
+          ${s.cidade?`<span><i class="ti ti-map-pin" style="font-size:12px"></i> ${s.cidade}</span>`:''}
+          <span><i class="ti ti-calendar" style="font-size:12px"></i> ${fmtDate(s.data_criacao)}</span>
+          ${s.updated_at?`<span style="color:var(--text3)">Atualizado ${fmtTS(s.updated_at)}</span>`:''}
+        </div>
+        ${s.endereco?`<div class="servico-desc"><i class="ti ti-map" style="font-size:11px"></i> ${s.endereco}</div>`:''}
+        ${s.descricao?`<div class="servico-desc">${s.descricao}</div>`:''}
+        ${s.obs?`<div class="servico-obs"><i class="ti ti-alert-triangle" style="font-size:11px"></i> ${s.obs}</div>`:''}`}
+      ${hist.length>0&&!compact?`
+        <button onclick="toggleHistory('${s.servico_id}')" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;padding:3px 0;margin-top:3px">
+          <i class="ti ti-history" style="font-size:11px"></i> Histórico de status (${hist.length})
+        </button>
+        <div class="history-list" id="hist-${s.servico_id}">
+          ${hist.map(h=>`<div class="history-item">
+            <span class="history-date">${fmtDate(h.data_registro)}</span>
+            <span class="badge cinza" style="font-size:10px">${(STATUS[h.status_anterior]||STATUS.aguardando).label}</span>
+            <i class="ti ti-arrow-right" style="font-size:10px;color:var(--text3)"></i>
+            <span class="badge ${(STATUS[h.status_novo]||STATUS.aguardando).badge}" style="font-size:10px">${(STATUS[h.status_novo]||STATUS.aguardando).label}</span>
+            ${h.obs?`<span style="color:var(--text3)">${h.obs}</span>`:''}
+          </div>`).join('')}
+        </div>`:''}
+    </div>
+    ${!compact?`<div class="servico-actions">
+      ${prox&&s.status!=='arquivado'?`<button class="btn btn-ghost btn-sm" onclick="avancarStatus('${s.servico_id}')"><i class="ti ti-arrow-right"></i> ${STATUS[prox].label}</button>`:''}
+      ${s.status!=='problema'&&s.status!=='arquivado'?`<button class="btn btn-sm btn-danger" onclick="mudarStatus('${s.servico_id}','problema')">Problema</button>`:''}
+      ${['problema','pendente'].includes(s.status)?`<button class="btn btn-sm btn-ghost" onclick="mudarStatus('${s.servico_id}','aguardando')">Reabrir</button>`:''}
+      ${s.status!=='arquivado'?`<button class="btn btn-ghost btn-sm" onclick="openModal('${s.servico_id}')"><i class="ti ti-edit"></i></button>`:''}
+      ${s.status!=='arquivado'?`<button class="btn btn-sm btn-warning" onclick="askArquivar('${s.servico_id}')" title="Arquivar"><i class="ti ti-archive"></i></button>`:''}
+      <button class="btn btn-sm btn-danger" onclick="askDeletar('${s.servico_id}')" title="Excluir permanentemente"><i class="ti ti-trash"></i></button>
+      <button class="btn btn-sm btn-danger" onclick="askExcluir('${s.servico_id}')" title="Excluir permanentemente"><i class="ti ti-trash"></i></button>
+    </div>`:''}
+  </div>`;
+}
+
+function toggleHistory(id){const el=document.getElementById('hist-'+id);if(el)el.classList.toggle('open')}
+
+// ── CALENDÁRIO ────────────────────────────────────────────────────────────────
+function renderCalendario(){
+  const year=calDate.getFullYear(),month=calDate.getMonth();
+  const first=new Date(year,month,1),last=new Date(year,month+1,0);
+  const startDay=first.getDay(),days=[];
+  for(let i=0;i<startDay;i++){const d=new Date(year,month,-(startDay-i-1));days.push({d,cur:false})}
+  for(let i=1;i<=last.getDate();i++)days.push({d:new Date(year,month,i),cur:true});
+  while(days.length%7!==0){const prev=days[days.length-1].d,nd=new Date(prev);nd.setDate(prev.getDate()+1);days.push({d:nd,cur:false})}
+  const meses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const hoje=todayStr();
+
+  let detail='';
+  if(calSelected){
+    const ds=state.servicos.filter(s=>s.data_criacao===calSelected&&!s.arquivado);
+    const funcsHoje={};
+    ds.forEach(s=>{if(!funcsHoje[s.funcionario])funcsHoje[s.funcionario]=[];funcsHoje[s.funcionario].push(s)});
+    detail=`<div class="cal-detail">
+      <div class="cal-detail-date"><i class="ti ti-calendar"></i> ${fmtDate(calSelected)}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <span class="badge azul">${ds.length} serviços</span>
+        <span class="badge verde">${ds.filter(s=>s.status==='concluido').length} concluídos</span>
+        <span class="badge amarelo">${ds.filter(s=>['pendente','aguardando'].includes(s.status)).length} pendentes</span>
+        ${ds.filter(s=>s.status==='problema').length>0?`<span class="badge vermelho">${ds.filter(s=>s.status==='problema').length} problemas</span>`:''}
+      </div>
+      ${Object.keys(funcsHoje).length===0?'<div style="color:var(--text3)">Nenhum serviço neste dia.</div>':
+        Object.entries(funcsHoje).map(([func,servs])=>`
+        <div class="hist-func-card" style="margin-bottom:8px">
+          <div class="hist-func-header">
+            <div class="avatar" style="background:${avatarColor(func)};width:30px;height:30px;font-size:11px">${initials(func)}</div>
+            <div><div class="hist-func-name">${func}</div><div class="hist-func-type">${servs.length} serviço(s)</div></div>
+          </div>
+          ${servs.map(s=>`<div class="hist-func-item">
+            <span class="badge ${(STATUS[s.status]||STATUS.aguardando).badge}" style="font-size:10px">${(STATUS[s.status]||STATUS.aguardando).label}</span>
+            ${s.tipo_registro==='interno'?`<span>Setor: <b>${s.setor}</b></span>`:`
+              ${s.cliente?`<span><b>${s.cliente}</b></span>`:''}
+              ${s.cidade?`<span style="color:var(--text3)">${s.cidade}</span>`:''}
+              ${s.tipo?`<span style="color:var(--text3)">${s.tipo}</span>`:''}
+              ${s.endereco?`<span style="color:var(--text3)">${s.endereco}</span>`:''}
+            `}
+          </div>`).join('')}
+        </div>`).join('')}
+    </div>`;
+  }
+
+  return`
+  <div class="cal-header">
+    <button class="btn btn-ghost btn-sm" onclick="calDate.setMonth(calDate.getMonth()-1);render()"><i class="ti ti-chevron-left"></i></button>
+    <div class="cal-title">${meses[month]} ${year}</div>
+    <button class="btn btn-ghost btn-sm" onclick="calDate.setMonth(calDate.getMonth()+1);render()"><i class="ti ti-chevron-right"></i></button>
+    <button class="btn btn-ghost btn-sm" onclick="calDate=new Date();render()">Hoje</button>
+  </div>
+  <div class="cal-grid">
+    ${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(d=>`<div class="cal-day-name">${d}</div>`).join('')}
+    ${days.map(({d,cur})=>{
+      const ds=d.toISOString().slice(0,10);
+      const servsD=state.servicos.filter(s=>s.data_criacao===ds&&!s.arquivado);
+      const conc=servsD.filter(s=>s.status==='concluido').length;
+      const prob=servsD.filter(s=>s.status==='problema').length;
+      const pend=servsD.filter(s=>['pendente','aguardando','ag_material'].includes(s.status)).length;
+      return`<div class="cal-day ${ds===hoje?'today':''} ${ds===calSelected?'selected':''} ${!cur?'other-month':''}" onclick="calSelected='${ds}';render()">
+        <div class="cal-day-num">${d.getDate()}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:1px">
+          ${conc>0?`<span class="cal-dot" style="background:var(--green)"></span>`:''}
+          ${prob>0?`<span class="cal-dot" style="background:var(--red)"></span>`:''}
+          ${pend>0?`<span class="cal-dot" style="background:var(--amber)"></span>`:''}
+          ${servsD.length>0&&!conc&&!prob&&!pend?`<span class="cal-dot" style="background:var(--blue)"></span>`:''}
+        </div>
+      </div>`}).join('')}
+  </div>${detail}`;
+}
+
+// ── HISTÓRICO DIÁRIO ──────────────────────────────────────────────────────────
+function renderHistorico(){
+  const lista=state.servicos.filter(s=>s.data_criacao===histDate&&!s.arquivado);
+  const funcsHoje={};
+  state.config.funcionarios.forEach(f=>{
+    const sf=lista.filter(s=>s.funcionario===f);
+    if(sf.length>0)funcsHoje[f]=sf;
+  });
+
+  return`
+  <div class="section-header"><div class="section-title">Histórico diário por funcionário</div></div>
+  <div class="filters">
+    <input type="date" class="filter-select" value="${histDate}" onchange="histDate=this.value;render()">
+    <button class="btn btn-ghost btn-sm" onclick="histDate=todayStr();render()">Hoje</button>
+  </div>
+  <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">
+    <span class="badge azul">${lista.length} registros</span>
+    <span class="badge verde">${lista.filter(s=>s.status==='concluido').length} concluídos</span>
+    <span class="badge amarelo">${lista.filter(s=>['pendente','aguardando'].includes(s.status)).length} pendentes</span>
+    ${lista.filter(s=>s.status==='problema').length>0?`<span class="badge vermelho">${lista.filter(s=>s.status==='problema').length} problemas</span>`:''}
+  </div>
+  ${Object.keys(funcsHoje).length===0?
+    `<div class="empty"><i class="ti ti-users"></i><div class="empty-title">Nenhum registro para ${fmtDate(histDate)}</div><div style="font-size:13px;color:var(--text3)">Selecione outra data ou lance serviços para este dia.</div></div>`:
+    Object.entries(funcsHoje).map(([func,servs])=>`
+    <div class="hist-func-card">
+      <div class="hist-func-header">
+        <div class="avatar" style="background:${avatarColor(func)}">${initials(func)}</div>
+        <div>
+          <div class="hist-func-name">${func}</div>
+          <div class="hist-func-type">${servs.length} registro(s) · ${servs.filter(s=>s.status==='concluido').length} concluído(s)</div>
+        </div>
+      </div>
+      ${servs.map(s=>`<div class="hist-func-item">
+        <span class="badge ${(STATUS[s.status]||STATUS.aguardando).badge}" style="font-size:10px">${(STATUS[s.status]||STATUS.aguardando).label}</span>
+        ${s.tipo_registro==='interno'?
+          `<span>Setor: <b>${s.setor||'-'}</b></span>`:
+          `<span>${s.cliente?`<b>${s.cliente}</b>`:''} ${s.cidade?'· '+s.cidade:''}</span>`}
+        ${s.tipo?`<span style="color:var(--text3)">${s.tipo}</span>`:''}
+        ${s.descricao?`<span style="color:var(--text3)">${s.descricao}</span>`:''}
+      </div>`).join('')}
+    </div>`).join('')}`;
+}
+
+// ── HISTÓRICO POR FUNCIONÁRIO ─────────────────────────────────────────────────
+function renderFuncHist(){
+  let lista=[];
+  if(histFuncSel){
+    lista=state.servicos.filter(s=>{
+      if(s.funcionario!==histFuncSel)return false;
+      if(histFuncDtIni&&s.data_criacao<histFuncDtIni)return false;
+      if(histFuncDtFim&&s.data_criacao>histFuncDtFim)return false;
+      return true;
+    }).sort((a,b)=>a.data_criacao.localeCompare(b.data_criacao));
+  }
+
+  return`
+  <div class="section-header"><div class="section-title">Histórico por funcionário</div></div>
+  <div class="filters">
+    <select class="filter-select" onchange="histFuncSel=this.value;render()">
+      <option value="">Selecione funcionário...</option>
+      ${state.config.funcionarios.map(f=>`<option value="${f}" ${histFuncSel===f?'selected':''}>${f}</option>`).join('')}
+    </select>
+    <input type="date" class="filter-select" value="${histFuncDtIni}" placeholder="De" onchange="histFuncDtIni=this.value;render()">
+    <input type="date" class="filter-select" value="${histFuncDtFim}" placeholder="Até" onchange="histFuncDtFim=this.value;render()">
+    <button class="btn btn-ghost btn-sm" onclick="histFuncDtIni='';histFuncDtFim='';render()"><i class="ti ti-x"></i> Limpar datas</button>
+  </div>
+  ${!histFuncSel?`<div class="empty"><i class="ti ti-user-search"></i><div class="empty-title">Selecione um funcionário</div></div>`:
+    lista.length===0?`<div class="empty"><i class="ti ti-clipboard"></i><div class="empty-title">Nenhum registro encontrado</div></div>`:`
+    <div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap">
+      <span class="badge azul">${lista.length} serviços</span>
+      <span class="badge verde">${lista.filter(s=>s.status==='concluido').length} concluídos</span>
+      <span class="badge amarelo">${lista.filter(s=>['pendente','aguardando'].includes(s.status)).length} pendentes</span>
+    </div>
+    <div style="overflow-x:auto">
+    <table class="hist-table">
+      <thead><tr>
+        <th>Data</th><th>Cidade</th><th>Cliente</th><th>Serviço / Setor</th><th>Status</th>
+      </tr></thead>
+      <tbody>
+        ${lista.map(s=>`<tr>
+          <td>${fmtDate(s.data_criacao)}</td>
+          <td>${s.cidade||'-'}</td>
+          <td>${s.cliente||'-'}</td>
+          <td>${s.tipo_registro==='interno'?`<span class="badge teal">Setor: ${s.setor}</span>`:(s.tipo||s.descricao||'-')}</td>
+          <td><span class="badge ${(STATUS[s.status]||STATUS.aguardando).badge}">${(STATUS[s.status]||STATUS.aguardando).label}</span></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>`}`;
+}
+
+// ── ADMIN ─────────────────────────────────────────────────────────────────────
+function renderAdmin(){
+  return`
+  <div class="section-title" style="margin-bottom:16px"><i class="ti ti-settings"></i> Área Administrativa</div>
+  <div class="admin-section">
+    <div class="admin-title"><i class="ti ti-users" style="color:var(--blue)"></i> Funcionários</div>
+    <div class="admin-list">${state.config.funcionarios.map(f=>`
+      <div class="admin-item">
+        <div class="avatar" style="background:${avatarColor(f)};width:28px;height:28px;font-size:11px">${initials(f)}</div>
+        <span class="admin-item-name">${f}</span>
+        <span class="admin-item-badge ${state.config.funcionariosInternos.includes(f)?'':'inactive'}">${state.config.funcionariosInternos.includes(f)?'Interno':'Campo'}</span>
+        <button class="btn btn-ghost btn-sm" onclick="toggleInterno('${f}')">${state.config.funcionariosInternos.includes(f)?'→ Campo':'→ Interno'}</button>
+        <button class="btn btn-sm" style="background:none;border:none;color:var(--text3);cursor:pointer" onclick="removeFuncionario('${f}')"><i class="ti ti-trash"></i></button>
+      </div>`).join('')}
+    </div>
+    <div class="admin-add-row">
+      <input class="admin-add-input" id="input-func" placeholder="Nome do funcionário" onkeydown="if(event.key==='Enter')addFuncionario()">
+      <button class="btn btn-primary btn-sm" onclick="addFuncionario()"><i class="ti ti-plus"></i> Adicionar</button>
+    </div>
+  </div>
+  <div class="admin-section">
+    <div class="admin-title"><i class="ti ti-map-pin" style="color:var(--green)"></i> Cidades</div>
+    <div class="admin-list">${state.config.cidades.map(c=>`<div class="admin-item"><span class="admin-item-name">${c}</span><button class="btn btn-sm" style="background:none;border:none;color:var(--text3);cursor:pointer" onclick="removeCidade('${c}')"><i class="ti ti-trash"></i></button></div>`).join('')}</div>
+    <div class="admin-add-row"><input class="admin-add-input" id="input-cidade" placeholder="Cidade" onkeydown="if(event.key==='Enter')addCidade()"><button class="btn btn-primary btn-sm" onclick="addCidade()"><i class="ti ti-plus"></i></button></div>
+  </div>
+  <div class="admin-section">
+    <div class="admin-title"><i class="ti ti-tools" style="color:var(--amber)"></i> Tipos de serviço</div>
+    <div class="admin-list">${state.config.tipos.map(t=>`<div class="admin-item"><span class="admin-item-name">${t}</span><button class="btn btn-sm" style="background:none;border:none;color:var(--text3);cursor:pointer" onclick="removeTipo('${t}')"><i class="ti ti-trash"></i></button></div>`).join('')}</div>
+    <div class="admin-add-row"><input class="admin-add-input" id="input-tipo" placeholder="Tipo de serviço" onkeydown="if(event.key==='Enter')addTipo()"><button class="btn btn-primary btn-sm" onclick="addTipo()"><i class="ti ti-plus"></i></button></div>
+  </div>
+  <div class="admin-section">
+    <div class="admin-title"><i class="ti ti-building-factory" style="color:var(--purple)"></i> Setores internos</div>
+    <div class="admin-list">${state.config.setores.map(s=>`<div class="admin-item"><span class="admin-item-name">${s}</span><button class="btn btn-sm" style="background:none;border:none;color:var(--text3);cursor:pointer" onclick="removeSetor('${s}')"><i class="ti ti-trash"></i></button></div>`).join('')}</div>
+    <div class="admin-add-row"><input class="admin-add-input" id="input-setor" placeholder="Setor" onkeydown="if(event.key==='Enter')addSetor()"><button class="btn btn-primary btn-sm" onclick="addSetor()"><i class="ti ti-plus"></i></button></div>
+  </div>
+  <div class="admin-section">
+    <div class="admin-title"><i class="ti ti-database-export" style="color:var(--teal)"></i> Backup</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-ghost" onclick="exportBackup()"><i class="ti ti-download"></i> Exportar backup JSON</button>
+      <label class="btn btn-ghost" style="cursor:pointer"><i class="ti ti-upload"></i> Importar backup <input type="file" accept=".json" style="display:none" onchange="importBackup(event)"></label>
+    </div>
+  </div>`;
+}
+
+// ── MODAL ─────────────────────────────────────────────────────────────────────
+function openModal(id=null){
+  editingId=id;
+  const s=id?state.servicos.find(x=>x.servico_id===id):null;
+  tipoRegistroAtual=s?.tipo_registro||'externo';
+  document.getElementById('modal-title').textContent=id?'Editar Serviço':'Novo Serviço';
+  document.getElementById('modal-body').innerHTML=renderModalForm(s);
+  document.getElementById('modal-backdrop').style.display='flex';
+}
+
+function renderModalForm(s){
+  const isInt=tipoRegistroAtual==='interno';
+  return`
+  <div class="tab-toggle">
+    <button class="tab-toggle-btn ${!isInt?'active':''}" onclick="setTipoRegistro('externo')"><i class="ti ti-map-pin"></i> Campo / Externo</button>
+    <button class="tab-toggle-btn ${isInt?'active':''}" onclick="setTipoRegistro('interno')"><i class="ti ti-building"></i> Interno / Produção</button>
+  </div>
+  <div id="form-externo" style="display:${isInt?'none':'block'}">
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Funcionário *</label>
+        <select class="form-input" id="f-funcionario"><option value="">Selecione...</option>
+        ${state.config.funcionarios.map(f=>`<option value="${f}" ${s?.funcionario===f?'selected':''}>${f}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Data *</label>
+        <input type="date" class="form-input" id="f-data" value="${s?.data_criacao||todayStr()}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Cliente</label>
+        <input type="text" class="form-input" id="f-cliente" placeholder="Nome do cliente" value="${s?.cliente||''}"></div>
+      <div class="form-group"><label class="form-label">Cidade</label>
+        <select class="form-input" id="f-cidade"><option value="">Selecione...</option>
+        ${state.config.cidades.map(c=>`<option value="${c}" ${s?.cidade===c?'selected':''}>${c}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Endereço / Local</label>
+      <input type="text" class="form-input" id="f-endereco" placeholder="Rua, número..." value="${s?.endereco||''}"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Tipo de serviço</label>
+        <select class="form-input" id="f-tipo"><option value="">Selecione...</option>
+        ${state.config.tipos.map(t=>`<option value="${t}" ${s?.tipo===t?'selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Status</label>
+        <select class="form-input" id="f-status">
+        ${Object.entries(STATUS).filter(([k])=>k!=='arquivado').map(([k,v])=>`<option value="${k}" ${(s?.status||'aguardando')===k?'selected':''}>${v.label}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Descrição</label>
+      <textarea class="form-input form-textarea" id="f-descricao">${s?.descricao||''}</textarea></div>
+    <div class="form-group"><label class="form-label">Observação / Atenção</label>
+      <input type="text" class="form-input" id="f-obs" placeholder="Ex: cliente só recebe à tarde" value="${s?.obs||''}"></div>
+  </div>
+  <div id="form-interno" style="display:${isInt?'block':'none'}">
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Funcionário *</label>
+        <select class="form-input" id="f-funcionario-int"><option value="">Selecione...</option>
+        ${state.config.funcionarios.map(f=>`<option value="${f}" ${s?.funcionario===f?'selected':''}>${f}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Data *</label>
+        <input type="date" class="form-input" id="f-data-int" value="${s?.data_criacao||todayStr()}"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Setor *</label>
+      <select class="form-input" id="f-setor"><option value="">Selecione...</option>
+      ${state.config.setores.map(st=>`<option value="${st}" ${s?.setor===st?'selected':''}>${st}</option>`).join('')}</select></div>
+    <div class="form-group"><label class="form-label">Observação</label>
+      <input type="text" class="form-input" id="f-obs-int" placeholder="Observação do dia..." value="${s?.obs||''}"></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+    <button class="btn btn-primary" onclick="salvar()"><i class="ti ti-check"></i> Salvar</button>
+  </div>`;
+}
+
+function setTipoRegistro(tipo){
+  tipoRegistroAtual=tipo;
+  document.querySelectorAll('.tab-toggle-btn').forEach((b,i)=>b.classList.toggle('active',(tipo==='externo'&&i===0)||(tipo==='interno'&&i===1)));
+  document.getElementById('form-externo').style.display=tipo==='externo'?'block':'none';
+  document.getElementById('form-interno').style.display=tipo==='interno'?'block':'none';
+}
+
+async function salvar(){
+  const isInt=tipoRegistroAtual==='interno';
+  const funcionario=(isInt?document.getElementById('f-funcionario-int'):document.getElementById('f-funcionario'))?.value;
+  const data=(isInt?document.getElementById('f-data-int'):document.getElementById('f-data'))?.value;
+  if(!funcionario){showToast('Funcionário é obrigatório','err');return}
+  if(!data){showToast('Data é obrigatória','err');return}
+
+  const now=new Date().toISOString();
+  let dados;
+
+  if(isInt){
+    const setor=document.getElementById('f-setor')?.value;
+    if(!setor){showToast('Selecione o setor','err');return}
+    dados={funcionario,data_criacao:data,setor,obs:document.getElementById('f-obs-int')?.value||'',
+      tipo_registro:'interno',tipo:'',status:'concluido',updated_at:now};
+  }else{
+    const status=document.getElementById('f-status')?.value||'aguardando';
+    dados={funcionario,data_criacao:data,
+      cliente:document.getElementById('f-cliente')?.value||'',
+      cidade:document.getElementById('f-cidade')?.value||'',
+      endereco:document.getElementById('f-endereco')?.value||'',
+      tipo:document.getElementById('f-tipo')?.value||'',
+      status,descricao:document.getElementById('f-descricao')?.value||'',
+      obs:document.getElementById('f-obs')?.value||'',
+      tipo_registro:'externo',updated_at:now};
+  }
+
+  if(editingId){
+    const old=state.servicos.find(s=>s.servico_id===editingId);
+    dados.servico_id=editingId;
+    const ok=await salvarServico(dados,false);
+    if(ok){
+      if(old&&old.status!==dados.status)
+        await registrarHistorico(editingId,old.status,dados.status,'Editado manualmente');
+      closeModal();render();showToast('Serviço atualizado!','ok');
+    }
+  }else{
+    dados.servico_id=genId();
+    dados.created_at=now;
+    dados.arquivado=false;
+    const ok=await salvarServico(dados,true);
+    if(ok){closeModal();render();showToast('Serviço lançado!','ok')}
+  }
+}
+
+async function avancarStatus(id){
+  const s=state.servicos.find(x=>x.servico_id===id);
+  if(!s||!STATUS_FLOW[s.status])return;
+  const novoStatus=STATUS_FLOW[s.status];
+  const statusAnterior=s.status;
+  const ok=await salvarServico({servico_id:id,status:novoStatus,updated_at:new Date().toISOString()},false);
+  if(ok){await registrarHistorico(id,statusAnterior,novoStatus,'');render();showToast('Status avançado!','ok')}
+}
+
+async function mudarStatus(id,status){
+  const s=state.servicos.find(x=>x.servico_id===id);
+  if(!s)return;
+  const statusAnterior=s.status;
+  const ok=await salvarServico({servico_id:id,status,updated_at:new Date().toISOString()},false);
+  if(ok){await registrarHistorico(id,statusAnterior,status,'');render();showToast('Status atualizado!','ok')}
+}
+
+// ── ARQUIVAR / CONFIRM ────────────────────────────────────────────────────────
+function askExcluir(id){
+  document.getElementById('confirm-icon').textContent='🗑️';
+  document.getElementById('confirm-title').textContent='Excluir permanentemente?';
+  document.getElementById('confirm-desc').textContent='O serviço será apagado do banco de dados e não poderá ser recuperado.';
+  document.getElementById('confirm-ok-btn').textContent='Excluir';
+  document.getElementById('confirm-ok-btn').className='btn btn-danger';
+  confirmCallback=()=>excluirServico(id);
+  document.getElementById('confirm-backdrop').style.display='flex';
+  document.getElementById('confirm-ok-btn').onclick=()=>{confirmCallback&&confirmCallback();closeConfirm()};
+}
+
+async function excluirServico(id){
+  setSyncStatus('syncing');
+  try{
+    await sb.from('historico').delete().eq('servico_id',id);
+    await sb.from('servicos').delete().eq('servico_id',id);
+    state.servicos=state.servicos.filter(s=>s.servico_id!==id);
+    state.historico=state.historico.filter(h=>h.servico_id!==id);
+    setSyncStatus('ok');
+    showToast('Serviço excluído.','ok');
+    render();
+  }catch(e){setSyncStatus('error');showToast('Erro ao excluir: '+e.message,'err')}
+}
+
+function askDeletar(id){
+  document.getElementById('confirm-icon').textContent='🗑️';
+  document.getElementById('confirm-title').textContent='Excluir permanentemente?';
+  document.getElementById('confirm-desc').textContent='O serviço será removido do banco de dados e não poderá ser recuperado.';
+  document.getElementById('confirm-ok-btn').textContent='Excluir';
+  document.getElementById('confirm-ok-btn').className='btn btn-danger';
+  confirmCallback=()=>deletarServico(id);
+  document.getElementById('confirm-backdrop').style.display='flex';
+  document.getElementById('confirm-ok-btn').onclick=()=>{confirmCallback&&confirmCallback();closeConfirm()};
+}
+
+async function deletarServico(id){
+  setSyncStatus('syncing');
+  try{
+    await sb.from('historico').delete().eq('servico_id',id);
+    const {error}=await sb.from('servicos').delete().eq('servico_id',id);
+    if(error)throw error;
+    state.servicos=state.servicos.filter(s=>s.servico_id!==id);
+    state.historico=state.historico.filter(h=>h.servico_id!==id);
+    setSyncStatus('ok');
+    showToast('Serviço excluído.','ok');
+    render();
+  }catch(e){setSyncStatus('error');showToast('Erro ao excluir: '+e.message,'err')}
+}
+
+function askArquivar(id){
+  document.getElementById('confirm-icon').textContent='📦';
+  document.getElementById('confirm-title').textContent='Arquivar este serviço?';
+  document.getElementById('confirm-desc').textContent='O serviço será movido para a aba Arquivados e não aparecerá nos ativos.';
+  document.getElementById('confirm-ok-btn').textContent='Arquivar';
+  document.getElementById('confirm-ok-btn').className='btn btn-warning';
+  confirmCallback=()=>arquivarServico(id);
+  document.getElementById('confirm-backdrop').style.display='flex';
+  document.getElementById('confirm-ok-btn').onclick=()=>{confirmCallback&&confirmCallback();closeConfirm()};
+}
+
+function closeConfirm(){document.getElementById('confirm-backdrop').style.display='none'}
+function closeModal(){document.getElementById('modal-backdrop').style.display='none';editingId=null}
+function handleBackdropClick(e){if(e.target===document.getElementById('modal-backdrop'))closeModal()}
+
+// ── BACKUP ────────────────────────────────────────────────────────────────────
+function exportBackup(){
+  const backup={servicos:state.servicos,historico:state.historico,config:state.config,exportedAt:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`agenda-campo-backup-${todayStr()}.json`;a.click();
+  URL.revokeObjectURL(url);
+  showToast('Backup exportado!','ok');
+}
+
+function importBackup(event){
+  const file=event.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async(e)=>{
+    try{
+      const backup=JSON.parse(e.target.result);
+      if(backup.servicos){
+        for(const s of backup.servicos){
+          await sb.from('servicos').upsert(s,{onConflict:'servico_id'});
+        }
+      }
+      if(backup.config){state.config=backup.config;await saveConfig()}
+      await loadServicos();await loadHistorico();
+      render();showToast('Backup importado com sucesso!','ok');
+    }catch(err){showToast('Erro ao importar backup','err')}
+  };
+  reader.readAsText(file);
+}
+
+// ── ADMIN ACTIONS ─────────────────────────────────────────────────────────────
+async function toggleInterno(nome){
+  if(state.config.funcionariosInternos.includes(nome))state.config.funcionariosInternos=state.config.funcionariosInternos.filter(f=>f!==nome);
+  else state.config.funcionariosInternos.push(nome);
+  await saveConfig();render();
+}
+async function removeFuncionario(nome){
+  if(state.config.funcionarios.length<=1)return;
+  state.config.funcionarios=state.config.funcionarios.filter(f=>f!==nome);
+  state.config.funcionariosInternos=state.config.funcionariosInternos.filter(f=>f!==nome);
+  await saveConfig();render();showToast('Removido','ok');
+}
+async function addFuncionario(){
+  const v=document.getElementById('input-func')?.value.trim();
+  if(!v||state.config.funcionarios.includes(v))return;
+  state.config.funcionarios.push(v);await saveConfig();render();showToast('Adicionado','ok');
+}
+async function removeCidade(c){state.config.cidades=state.config.cidades.filter(x=>x!==c);await saveConfig();render()}
+async function addCidade(){const v=document.getElementById('input-cidade')?.value.trim();if(!v||state.config.cidades.includes(v))return;state.config.cidades.push(v);await saveConfig();render();showToast('Adicionado','ok')}
+async function removeTipo(t){state.config.tipos=state.config.tipos.filter(x=>x!==t);await saveConfig();render()}
+async function addTipo(){const v=document.getElementById('input-tipo')?.value.trim();if(!v||state.config.tipos.includes(v))return;state.config.tipos.push(v);await saveConfig();render();showToast('Adicionado','ok')}
+async function removeSetor(s){state.config.setores=state.config.setores.filter(x=>x!==s);await saveConfig();render()}
+async function addSetor(){const v=document.getElementById('input-setor')?.value.trim();if(!v||state.config.setores.includes(v))return;state.config.setores.push(v);await saveConfig();render();showToast('Adicionado','ok')}
+
+function showToast(msg,tipo='ok'){
+  const t=document.createElement('div');
+  t.className=`toast ${tipo}`;t.textContent=msg;
+  document.getElementById('toast-container').appendChild(t);
+  setTimeout(()=>t.remove(),3000);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+document.getElementById('topbar-date').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+
+async function init(){
+  try{
+    await Promise.all([loadServicos(),loadHistorico(),loadConfig()]);
+    setupRealtime();
+    document.getElementById('loading-overlay').style.display='none';
+    render();
+  }catch(e){
+    document.querySelector('.loading-text').textContent='Erro de conexão. Verifique sua internet.';
+    setSyncStatus('error');
+  }
+}
+
+init();
+</script>
+</body>
+</html>
